@@ -20,8 +20,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{40D83360-0265-40C8-AF2B-C93DD65010EC}</ProjectGuid>
-    <RootNamespace>Fireworks</RootNamespace>
+    <ProjectGuid>{86761CFC-CE5A-42A9-AEB1-B454A38B1206}</ProjectGuid>
+    <RootNamespace>MyFireworks</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -123,7 +123,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Fireworks.cpp" />
+    <ClCompile Include="fireworks.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
