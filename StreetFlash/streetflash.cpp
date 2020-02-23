@@ -1,3 +1,25 @@
+/*
+	程序名称：
+			街道闪电(street flash)
+	简介：
+			使用EasyX实现在街道上空产生闪电
+
+	实现思路：
+			闪电从屏幕顶端产生，把闪电蔓延的路径细分为多段，每一次蔓延的长度len和方向angle通过rand()生成，
+			闪电的x坐标为x += len * sin(angle)，y坐标为y += len * cos(angle)，从而模拟闪电的产生。
+			每次闪电后画面变亮，通过原画面中每个像素乘以一个系数来实现。持续一个很短的时间后，恢复到闪电前得画面即可。
+
+	环境:
+			VS2017 + EasyX_20200109(beta)
+
+	时间：
+			2020.2.23
+	作者：
+			gaiyitp9
+
+	参考自 星羽 邮箱：1479245050@qq.com  QQ： 1479245050 
+*/
+
 #include <graphics.h>
 #include <ctime>
 #include <cmath>
@@ -31,7 +53,7 @@ struct House2
 	int top;
 };
 
-IMAGE temp;		// 用于记录闪电前得图像
+IMAGE temp;		// 用于记录闪电前的图像
 
 int random(int index1, int index2);		// 产生位于[index2, index1 + index2)之间不为0得随机数
 void light(int x);						// 产生闪电
