@@ -37,8 +37,8 @@ using namespace std;
 class Fluid
 {
 private:
-	const int mScreenWidth = 1024;			// 应用程序屏幕宽度
-	const int mScreenHeight = 576;			// 应用程序屏幕高度
+	const int mScreenWidth = 600;			// 应用程序屏幕宽度
+	const int mScreenHeight = 400;			// 应用程序屏幕高度
 	enum { NumOfParticles = 600 };			// 粒子数
 
 	struct Particle
