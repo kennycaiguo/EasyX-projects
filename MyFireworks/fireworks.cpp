@@ -13,7 +13,7 @@
 			用来模拟爆炸后烟花的一部分，也就是ParticleSwarm组成了Fireworks。
 
 	环境：
-			VS2017 + EasyX_20200109(beta)
+			VS2019 + EasyX_20200109(beta)
 
 	时间：
 			2020.2.22
@@ -316,7 +316,7 @@ int main()
 	setrop2(R2_MERGEPEN);
 	srand((unsigned)time(nullptr));
 
-	double elapsed = 0;		
+	double elapsed = 0.0;		
 
 	std::list<LightLine> vecLightLine;
 	vecLightLine.push_back(LightLine());
