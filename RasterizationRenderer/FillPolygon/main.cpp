@@ -87,7 +87,7 @@ void fillPolygon(Canvas& canvas, std::vector<Point2>& points)
 					edgeEnd = it;
 					// 绘制线段
 					for (int x = (int)edgeStar->x; x <= (int)edgeEnd->x; x++)
-						canvas.setPixel(x, y, RED);
+						canvas.setPixel(x, y, WHITE);
 					// 这对交点的x值增加dx
 					edgeStar->x += edgeStar->dx;
 					edgeEnd->x += edgeEnd->dx;
@@ -104,7 +104,7 @@ int main()
 	Canvas canvas(800, 600);
 	std::vector<Point2> points{ 
 		{400, 300}, {500, 300},
-		{500, 200}, {400, 200} };
+		{500, 200}, {400, 200}, {300, 100} };
 
 	fillPolygon(canvas, points);
 	getchar();
