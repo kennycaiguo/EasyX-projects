@@ -18,10 +18,19 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Vector3.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Canvas.h" />
+    <ClInclude Include="Point2.h" />
+    <ClInclude Include="Vector3.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{11DC79D4-D9E3-4920-8F85-CCEA814FD51F}</ProjectGuid>
-    <RootNamespace>Clip</RootNamespace>
+    <ProjectGuid>{61A61218-930F-4FE0-A043-E41FDE29C3BA}</ProjectGuid>
+    <RootNamespace>BilinearInterpolation</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -137,17 +146,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClInclude Include="Canvas.h" />
-    <ClInclude Include="Point2.h" />
-    <ClInclude Include="Point3.h" />
-    <ClInclude Include="Point4.h" />
-    <ClInclude Include="Vector3.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Vector3.cpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

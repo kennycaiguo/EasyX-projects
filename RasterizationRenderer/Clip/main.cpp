@@ -1,8 +1,13 @@
 #include "Canvas.h"
 #include "Point2.h"
+#include "Point3.h"
+#include "Point4.h"
+#include "Vector3.h"
 #include <cstdio>
 #include <vector>
+#include <array>
 #include <list>
+#include <chrono>
 
 // 多边形的边
 struct Edge
@@ -21,10 +26,40 @@ bool sortEdge(Edge const& edge1, Edge const& edge2)
 	else					
 		return edge1.dx < edge2.dx;	// 如果x坐标相等，那么根据x坐标的增量来比较，增量越大则在下一行x坐标也越大
 }
-
-void fillPolygon(Canvas& canvas, std::vector<Point2>& points)
+// 构造2x2大小的图片
+COLORREF picture[2][2] = {
+	{RGB(255, 0, 0), RGB(255, 255, 255)},
+	{RGB(0, 255, 0), RGB(0, 0, 255)}
+};
+// 获取图片颜色
+COLORREF getPixel(int x, int y)
 {
-	if (points.size() < 3)
+	return picture[x][y];
+}
+// 把纹理坐标转换为图片的xy坐标
+void UV2XY(double u, double v, double& x, double& y, double w, double h)
+{
+	x = u * w;
+	y = v * h;
+	x = min(max(x, 0), w);	// 把x限制在0-w
+	y = min(max(y, 0), h);	// 把y限制在0-h
+}
+
+void fillTriangle(Canvas& canvas, std::array<Point2, 3>& triangle, std::array<Color, 3>& colors)
+{
+	std::array<Point2, 3> points;
+	for (int i = 0; i < 3; i++)
+	{
+		points[i].x = (triangle[i].x + 1) * 0.5 * ((double)canvas.mScrWidth - 1);
+		points[i].y = (triangle[i].y + 1) * 0.5 * ((double)canvas.mScrHeight - 1);
+	}
+
+	Vector3 ab(points[1].x - points[0].x, points[1].y - points[0].y, 0.0);
+	Vector3 bc(points[2].x - points[1].x, points[2].y - points[1].y, 0.0);
+	Vector3 ac(points[2].x - points[0].x, points[2].y - points[0].y, 0.0);
+	Vector3 ca(points[0].x - points[2].x, points[0].y - points[2].y, 0.0);
+	double area = cross(ab, ac).length();	// 三角形面积的两倍
+	if (area == 0)
 		return;
 
 	// 创建NET(new edge table)表
@@ -87,7 +122,21 @@ void fillPolygon(Canvas& canvas, std::vector<Point2>& points)
 					edgeEnd = it;
 					// 绘制线段
 					for (int x = (int)edgeStar->x; x <= (int)edgeEnd->x; x++)
-						canvas.setPixel(x, y, WHITE);
+					{
+						double weightA, weightB, weightC;
+						Vector3 ap(x - points[0].x, y - points[0].y, 0.0);
+						Vector3 bp(x - points[1].x, y - points[1].y, 0.0);
+						Vector3 cp(x - points[2].x, y - points[2].y, 0.0);
+						weightA = cross(bc, bp).length() / area;
+						weightB = cross(ca, cp).length() / area;
+						weightC = cross(ab, ap).length() / area;
+						BYTE r, g, b;
+						Color target = weightA * colors[0] + weightB * colors[1] + weightC * colors[2];
+						r = (BYTE)(target.r);
+						g = (BYTE)(target.g);
+						b = (BYTE)(target.b);
+						canvas.setPixel(x, y, RGB(r, g, b));
+					}
 					// 这对交点的x值增加dx
 					edgeStar->x += edgeStar->dx;
 					edgeEnd->x += edgeEnd->dx;
@@ -99,102 +148,171 @@ void fillPolygon(Canvas& canvas, std::vector<Point2>& points)
 	delete[] NET;
 }
 
-/*
-使用直线裁剪一条直线
-对于一个凸多边形来说，他所有的顶点都在任意一条边的同一侧，所以当使用该多边形的某一条边作为裁剪边界，则选用任意不在这条边上面的顶点r可作为裁剪参照条件
-当被裁剪顶点p和r不在直线的同一侧时说明p会被裁剪掉
-本函数如果裁剪了Line,会修改传入参数line的坐标，修改A点时返回1,修改B点时返回2，平凡接受时返回0，平凡拒绝返回-1
-裁剪直线的端点分别为Boundary0和Boundary1。被裁剪直线为line，存有两个端点
-*/
-int clipLL(std::vector<Point2>& boundary, Point2& reference, std::vector<Point2>& line)
+// 投影函数,分别传递一个点和near平面，计算出新投影点并将结果保存至一个齐次坐标中
+void projection(Point3& point, double l, double r, double b, double t, double n, double f, Point4& result)
 {
-	// 裁剪直线的一般式系数
-	double A1 = boundary[1].y - boundary[0].y;
-	double B1 = boundary[0].x - boundary[1].x;
-	double C1 = boundary[1].x * boundary[0].y - boundary[0].x * boundary[1].y;
-
-	// 被裁剪直线端点是否被裁剪
-	bool clipA = false , clipB = false;
-
-	if ((A1 * reference.x + B1 * reference.y + C1) * (A1 * line[0].x + B1 * line[0].y + C1) < 0)
-		clipA = true;
-	if ((A1 * reference.x + B1 * reference.y + C1) * (A1 * line[1].x + B1 * line[1].y + C1) < 0)
-		clipB = true;
-
-	if (!clipA && !clipB)		// 平凡接受
-		return 0;
-	else if (clipA && clipB)	// 平凡拒绝
-		return -1;
-
-	// 被裁剪直线的一般式系数
-	double A2 = line[1].y - line[0].y;
-	double B2 = line[0].x - line[1].x;
-	double C2 = line[1].x * line[0].y - line[0].x * line[1].y;
-	// 裁剪直线与被裁剪直线的交点
-	double x = (C2 * B1 - C1 * B2) / (A1 * B2 - A2 * B1);
-	double y = (C1 * A2 - C2 * A1) / (A1 * B2 - A2 * B1);
-
-	if (clipA)	
-	{
-		line[0].x = x;	// 入点
-		line[0].y = y;
-		return 1;
-	}
-	else
-	{
-		line[1].x = x;	// 出点
-		line[1].y = y;
-		return 2;
-	}
+	result.x = (2 * n * point.x) / (r - l) - point.z * (r + l) / (r - l);
+	result.y = (2 * n * point.y) / (t - b) - point.z * (t + b) / (t - b);
+	result.z = (f + n) / (f - n) * point.z + 2 * f * n / (n - f);
+	result.w = point.z;
 }
 
-/*
-使用一个凸多边形作为裁剪窗口
-*/
-std::vector<Point2> clip(std::vector<Point2>& clipWindow, std::vector<Point2>& polygon)
+//对直线进行裁剪,返回-1表示平凡拒绝，返回0表示平凡接受，返回1表示对A点进行裁剪，返回2表示对B点进行裁剪，最后两个参数result和t表示裁剪点坐标和t值
+//其中参数flag从0到5分别表示边界为left、right、bottom、top、near、far
+int clipLine(int flag, Point4& A, Point4& B, Point4& result, double& t)
 {
-	std::vector<Point2> res = polygon;
-	int countOfpolygon = polygon.size();
-	int countOfwindow = clipWindow.size();
-
-	for (int j = 0; j < countOfwindow; j++)
+	double aClipCondition = 0;
+	double bClipCondition = 0;
+	switch (flag)
 	{
-		std::vector<Point2> points;
-		int size = res.size();
+	case 0:
+		aClipCondition = A.x + A.w;
+		bClipCondition = B.x + B.w;
+		break;
+	case 1:
+		aClipCondition = A.w - A.x;
+		bClipCondition = B.w - B.x;
+		break;
+	case 2:
+		aClipCondition = A.y + A.w;
+		bClipCondition = B.y + B.w;
+		break;
+	case 3:
+		aClipCondition = A.w - A.y;
+		bClipCondition = B.w - B.y;
+		break;
+	case 4:
+		aClipCondition = A.z + A.w;
+		bClipCondition = B.z + B.w;
+		break;
+	case 5:
+		aClipCondition = A.w - A.z;
+		bClipCondition = B.z - B.z;
+		break;
+	default:
+		return 0;
+	}
+	if (aClipCondition < 0 && bClipCondition < 0)
+		return -1;
+	if (aClipCondition >= 0 && bClipCondition >= 0)
+		return 0;
 
+	t = aClipCondition / (aClipCondition - bClipCondition);
+	result.x = A.x + (B.x - A.x) * t;
+	result.y = A.y + (B.y - A.y) * t;
+	result.z = A.z + (B.z - A.z) * t;
+	result.w = A.w + (B.w - A.w) * t;
+	if (aClipCondition < 0)
+		return 1;
+	else
+		return 2;
+}
+
+void clipTriangleAndDraw(std::array<Point4, 3>& triangle, std::vector<double>& attribute, Canvas& canvas)
+{
+	std::vector<Point4> points(triangle.begin(), triangle.end());	// 裁剪后顶点数量
+	std::vector<double> attributes(attribute);						// 裁剪后顶点属性
+	
+	// 用视椎体对三角形进行裁剪，裁剪方法与Suthland-Hodgman算法类似
+	for (int clipflag = 0; clipflag < 6; clipflag++)
+	{
+		std::vector<Point4> temp;		// 用于储存本次裁剪之后的顶点
+		std::vector<double> tempAttri;	// 用于储存本次裁剪之后的顶点属性
+		int size = points.size();
 		for (int i = 0; i < size; i++)
 		{
-			std::vector<Point2> line = { res[i], res[(i + 1) % countOfpolygon] };
-			std::vector<Point2> boundary = { clipWindow[j], clipWindow[(j + 1) % countOfwindow] };
-
-			int ret = clipLL(boundary, clipWindow[(j + 2) % countOfwindow], line);
-
-			if (ret == 0)		// 平凡接受
-				points.push_back(line[1]);
-			else if (ret == 1)	// 入点
+			Point4 result;				// 边界与三角形边的交点
+			double t;					// 交点线性插值的系数
+			int indexA = i, indexB = (i + 1) % size;
+			int ret = clipLine(clipflag, points[indexA], points[indexB], result, t);
+			// 平凡接受
+			if (ret == 0)	
 			{
-				points.push_back(line[0]);
-				points.push_back(line[1]);
+				temp.push_back(points[indexB]);
+				tempAttri.push_back(attributes[indexB * 3]);
+				tempAttri.push_back(attributes[indexB * 3 + 1]);
+				tempAttri.push_back(attributes[indexB * 3 + 2]);
 			}
-			else if (ret == 2)	// 出点
-				points.push_back(line[1]);
+			// 裁剪A点，加入入点和B点
+			else if (ret == 1)
+			{
+				temp.push_back(result);
+				tempAttri.push_back(attributes[indexA * 3] + (attributes[indexB * 3] - attributes[indexA * 3]) * t);
+				tempAttri.push_back(attributes[indexA * 3 + 1] + (attributes[indexB * 3 + 1] - attributes[indexA * 3 + 1]) * t);
+				tempAttri.push_back(attributes[indexA * 3 + 2] + (attributes[indexB * 3 + 2] - attributes[indexA * 3 + 2]) * t);
+				temp.push_back(points[(i + 1) % size]);
+				tempAttri.push_back(attributes[indexB * 3]);
+				tempAttri.push_back(attributes[indexB * 3 + 1]);
+				tempAttri.push_back(attributes[indexB * 3 + 2]);
+			}
+			// 裁剪B点，加入出点
+			else if (ret == 2)
+			{
+				temp.push_back(result);
+				tempAttri.push_back(attributes[indexA * 3] + (attributes[indexB * 3] - attributes[indexA * 3]) * t);
+				tempAttri.push_back(attributes[indexA * 3 + 1] + (attributes[indexB * 3 + 1] - attributes[indexA * 3 + 1]) * t);
+				tempAttri.push_back(attributes[indexA * 3 + 2] + (attributes[indexB * 3 + 2] - attributes[indexA * 3 + 2]) * t);
+			}
 		}
-		res.clear();
-		res.assign(points.begin(), points.end());
+		points.clear();
+		points.assign(temp.begin(), temp.end());
+		attributes.clear();
+		attributes.assign(tempAttri.begin(), tempAttri.end());
 	}
+	// 将裁剪后的图形分解成多个三角形进行绘制，记得要先进行透视除法将坐标变换到CVV空间
+	std::array<Point2, 3> out;
+	std::array<Color, 3> colors;
+	for (int i = 1; i < points.size() - 1; i++)
+	{
+		out[0].x = points[0].x / points[0].w;
+		out[0].y = points[0].y / points[0].w;
+		out[1].x = points[i].x / points[i].w;
+		out[1].y = points[i].y / points[i].w;
+		out[2].x = points[i+1].x / points[i+1].w;
+		out[2].y = points[i+1].y / points[i+1].w;
 
-	return res;
+		colors[0].r = attributes[0];
+		colors[0].g = attributes[1];
+		colors[0].b = attributes[2];
+		colors[1].r = attributes[i * 3];
+		colors[1].g = attributes[i * 3 + 1];
+		colors[1].b = attributes[i * 3 + 2];
+		colors[2].r = attributes[(i + 1) * 3];
+		colors[2].g = attributes[(i + 1) * 3 + 1];
+		colors[2].b = attributes[(i + 1) * 3 + 2];
+
+		fillTriangle(canvas, out, colors);
+	}
 }
 
 int main()
 {
-	std::vector<Point2> polygon = { {300,200},{500,200},{500,400},{300,400} };	//被裁剪多边形
-	std::vector<Point2> clipWindow = { {300,200},{490,200},{450,390} };			//裁剪窗口
+	//创建绘图窗口
+	Canvas canvas(640, 480);
 
-	auto result = clip(clipWindow, polygon);									//裁剪
+	std::array<Point3, 3> triangle = { Point3(-640, -480, 50), Point3(0, 480, 2), Point3(640, -480, 50) };
+	std::vector<double> colors = { 255, 0, 0, 0, 255, 0, 0, 0, 255 };
+	// 裁剪空间坐标
+	std::array<Point4, 3> result;
+	for (int i = 0; i < 3; i++)
+		projection(triangle[i], -320, 320, -240, 240, 25, 50, result[i]);
 
-	Canvas canvas(800, 600);													//创建绘图窗口
-	fillPolygon(canvas, result);												//绘制多边形
+	std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+	
+	// 裁剪三角形并绘制
+	clipTriangleAndDraw(result, colors, canvas);
+
+	std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+	std::chrono::microseconds duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	//花费时间(秒)
+	double useTime = double(duration.count()) * 
+		std::chrono::microseconds::period::num / std::chrono::microseconds::period::den;
+	//往调试器打印信息用的缓冲区
+	char msg[256];
+	sprintf_s(msg, 256, "Debug版本，重心坐标插值绘制耗时:%lf 毫秒\n", useTime * 1000);
+	//往调试器输出两帧绘制时间间隔
+	OutputDebugStringA(msg);
 
 	getchar();
+	return 0;
 }

@@ -20,9 +20,10 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{11DC79D4-D9E3-4920-8F85-CCEA814FD51F}</ProjectGuid>
-    <RootNamespace>Clip</RootNamespace>
+    <ProjectGuid>{00EE4687-8D82-4074-A6EE-F23C7F45FEB7}</ProjectGuid>
+    <RootNamespace>Interpolation</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>BarycentricInterpolation</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -138,15 +139,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Canvas.h" />
-    <ClInclude Include="Point2.h" />
-    <ClInclude Include="Point3.h" />
-    <ClInclude Include="Point4.h" />
-    <ClInclude Include="Vector3.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Vector3.cpp" />
+    <ClCompile Include="Vector3.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Canvas.h" />
+    <ClInclude Include="Point2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

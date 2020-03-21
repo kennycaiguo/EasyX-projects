@@ -15,28 +15,22 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Vector3.h">
+      <Filter>头文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Vector3.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="Canvas.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Point2.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Point3.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="Point4.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="Vector3.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="Vector3.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>
