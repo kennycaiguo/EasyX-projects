@@ -1,11 +1,15 @@
 #pragma once
 
+#include <initializer_list>
+#include <cassert>
+
 class Point3
 {
 public:
-	Point3(double x1, double y1, double z1)
-		: x(x1), y(y1), z(z1) {}
-	Point3() { x = y = z = 0; }
+	Point3(double x1 = 0.0, double y1 = 0.0, double z1 = 0.0);
+	Point3(std::initializer_list<double> list);
+
+	Point3& operator=(std::initializer_list<double> list);
 
 	double x, y, z;
 };

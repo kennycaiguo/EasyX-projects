@@ -9,3 +9,5 @@ public:
 
 	double x, dx, yMax;
 };
+
+bool sortEdge(Edge const& edge1, Edge const& edge2);

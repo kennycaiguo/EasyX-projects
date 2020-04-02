@@ -1,45 +1,27 @@
 #pragma once
 
 #include <cmath>
+#include <initializer_list>
+#include <cassert>
 
 class Vector3
 {
 public:
-	Vector3(double x1 = 0, double y1 = 0, double z1 = 0)
-		: x(x1), y(y1), z(z1) {}
+	Vector3(double x1 = 0.0, double y1 = 0.0, double z1 = 0.0);
+	Vector3(std::initializer_list<double> list);
 	~Vector3() {}
 
+	Vector3& operator=(std::initializer_list<double> list);
+	Vector3 operator-(Vector3& a);
+	double operator[](size_t i) const;
+	double& operator[](size_t i);
+
+	// 向量的模
+	inline double Mod() const;
+
+	static Vector3 Cross(Vector3& a, Vector3& b);
+	static double Dot(Vector3& a, Vector3& b);
+	void Normalize();
+
 	double x, y, z;
-
-	// 向量的长度
-	double length() const
-	{
-		return sqrt(x * x + y * y + z * z);
-	}
 };
-// 向量叉乘
-Vector3 cross(Vector3& a, Vector3& b);
-
-
-class Color
-{
-public:
-	Color(float r1 = 0.0f, float g1 = 0.0f, float b1 = 0.0f)
-		: r(r1), g(g1), b(b1) {}
-	~Color() {}
-
-	float r, g, b;
-
-	Color operator* (float a)
-	{
-		return Color(a * r, a * g, a * b);
-	}
-
-	Color operator+ (Color color)
-	{
-		return Color(r + color.r, g + color.g, b + color.b);
-	}
-};
-
-Color operator* (float a, Color& color);
-
