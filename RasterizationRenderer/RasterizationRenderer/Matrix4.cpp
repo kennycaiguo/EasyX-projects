@@ -96,7 +96,7 @@ Point4 Matrix4::operator*(const Point4& point) const
 	{
 		for (size_t j = 0; j < 4; j++)
 		{
-			result[i] = value[i][j] * point[j];
+			result[i] += value[i][j] * point[j];
 		}
 	}
 	return result;
@@ -155,7 +155,7 @@ Matrix4 Matrix4::Inverse(const Matrix4& mat4)
 	return inverse;
 }
 
-Matrix4 Matrix4::Scaling(Vector3& scale)
+Matrix4 Matrix4::Scaling(Vector3 scale)
 {
 	double sx = scale.x;
 	double sy = scale.y;
@@ -178,7 +178,7 @@ Matrix4 Matrix4::Scaling(double sx, double sy, double sz)
 	};
 }
 
-Matrix4 Matrix4::Rotate(Vector3& r, double angle)
+Matrix4 Matrix4::Rotate(Vector3 r, double angle)
 {
 	double radian = angle * PI / 180;
 	double x = r.x;
@@ -195,7 +195,7 @@ Matrix4 Matrix4::Rotate(Vector3& r, double angle)
 	};
 }
 
-Matrix4 Matrix4::Translate(Vector3& translation)
+Matrix4 Matrix4::Translate(Vector3 translation)
 {
 	double tx = translation.x;
 	double ty = translation.y;

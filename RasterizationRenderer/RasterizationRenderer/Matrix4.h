@@ -29,10 +29,10 @@ public:
 	Point4 operator*(const Point4& point) const;		// æÿ’Û”Îµ„≥À∑®
 
 	static Matrix4 Inverse(const Matrix4& mat4);
-	static Matrix4 Scaling(Vector3& scale);
+	static Matrix4 Scaling(Vector3 scale);
 	static Matrix4 Scaling(double sx, double sy, double sz);
-	static Matrix4 Rotate(Vector3& axis, double angle);
-	static Matrix4 Translate(Vector3& translation);
+	static Matrix4 Rotate(Vector3 axis, double angle);
+	static Matrix4 Translate(Vector3 translation);
 	static Matrix4 Translate(double tx, double ty, double tz);
 
 private:

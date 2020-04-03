@@ -12,7 +12,11 @@ public:
 	~Vector3() {}
 
 	Vector3& operator=(std::initializer_list<double> list);
-	Vector3 operator-(Vector3& a);
+	Vector3 operator+(Vector3 a);
+	Vector3& operator+=(Vector3 a);
+	Vector3& operator-=(Vector3 a);
+	Vector3 operator-(Vector3 a);
+	Vector3 operator*(double a);
 	double operator[](size_t i) const;
 	double& operator[](size_t i);
 

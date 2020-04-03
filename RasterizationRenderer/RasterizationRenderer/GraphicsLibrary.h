@@ -21,9 +21,9 @@ public:
 	GraphicsLibrary(unsigned int width, unsigned int height);
 	~GraphicsLibrary();
 	// 顶点着色器
-	void (*VertexShader)(const double* vbo, Point4& position, double attributes[], size_t stride) = nullptr;
+	void (*VertexShader)(const double* vbo, Point4& position, double* attributes, size_t stride) = nullptr;
 	// 片元着色器
-	void (*FragmentShader)(double attributes[], size_t stride, COLORREF& fragColor) = nullptr;
+	void (*FragmentShader)(double* attributes, size_t stride, COLORREF& fragColor) = nullptr;
 	void SetVBO(double* buffer, size_t count, size_t stride);	// 设置顶点缓冲VBO，顶点数量，顶点数据间隔
 	void FastPutPixel(int x, int y, COLORREF c);				// 绘制像素
 	COLORREF FastGetPixel(int x, int y);						// 获得像素颜色
@@ -36,13 +36,14 @@ public:
 	COLORREF Texture2D(double u, double v);						// 读取纹理的颜色
 
 	static Matrix4 PerspectiveProjection(double l, double  r, double b, double t, double n, double f);
+	static Matrix4 PerspectiveProjection(double fov, double aspectRatio, double n, double f);	// 侧面的fov
 	static Matrix4 LookAt(Vector3& eye, Vector3& up, Vector3& target);
 
+	unsigned int screenWidth, screenHeight;						// 屏幕的大小
 	bool cullFace = true;										// 是否启用三角形剔除
 	bool cullClockwise = true;									// 默认剔除顺时针，false时剔除逆时针
 	
 private:
-	unsigned int screenWidth, screenHeight;						// 屏幕的大小
 
 
 	std::unique_ptr<unsigned char[]> textureBuffer;				// 纹理数据

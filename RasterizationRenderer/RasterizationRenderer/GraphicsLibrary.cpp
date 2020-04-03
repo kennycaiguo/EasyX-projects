@@ -25,7 +25,7 @@ void GraphicsLibrary::SetVBO(double* buffer, size_t count, size_t stride)
 
 	vboSize = vertexStride * vertexCount;
 	vboBuffer.reset(new double[vboSize]);
-	memcpy(vboBuffer.get(), buffer, vboSize);
+	memcpy(vboBuffer.get(), buffer, vboSize * sizeof(double));
 }
 
 void GraphicsLibrary::FastPutPixel(int x, int y, COLORREF c)
@@ -41,6 +41,7 @@ COLORREF GraphicsLibrary::FastGetPixel(int x, int y)
 
 bool GraphicsLibrary::LoadPicture(const char* filename)
 {
+	stbi_set_flip_vertically_on_load(true);
 	unsigned char* pictureData = stbi_load(filename, &textureWidth, &textureHeight, &pictureChannel, 0);
 	if (pictureData)
 	{
@@ -63,9 +64,9 @@ void GraphicsLibrary::Draw()
 	Point4 point;
 
 	double* vbo = vboBuffer.get();
-	for (int i = 0; i < vertexCount / 3; i++)
+	for (size_t i = 0; i < vertexCount / 3; i++)
 	{
-		for (int j = 0; j < 3; j++)
+		for (size_t j = 0; j < 3; j++)
 		{
 			VertexShader(vbo + (3 * i + j) * vertexStride, point, 
 				attributes.get() + j * attributeStride, attributeStride);
@@ -105,7 +106,7 @@ COLORREF GraphicsLibrary::Texture2D(double u, double v)
 	if (textureBuffer.get() && pictureChannel >= 3)
 	{
 		int x = u * textureWidth;
-		int y = u * textureHeight;
+		int y = v * textureHeight;
 		return RGB(
 			textureBuffer[y * rowSize + x * pixelSize],
 			textureBuffer[y * rowSize + x * pixelSize + 1],
@@ -123,6 +124,16 @@ Matrix4 GraphicsLibrary::PerspectiveProjection(double l, double r, double b, dou
 			0,				 0,				  (n + f) / (n - f), 2 * f * n / (n - f),
 			0,				 0,				  -1,				 0,
 	};
+}
+
+Matrix4 GraphicsLibrary::PerspectiveProjection(double fov, double aspectRatio, double n, double f)
+{
+	double l, r, b, t;
+	b = -n * tan(fov / 2 * PI / 180);
+	t = n * tan(fov / 2 * PI / 180);
+	l = b * aspectRatio;
+	r = t * aspectRatio;
+	return GraphicsLibrary::PerspectiveProjection(l, r, b, t, n, f);
 }
 
 Matrix4 GraphicsLibrary::LookAt(Vector3& eye, Vector3& up, Vector3& target)
@@ -150,7 +161,7 @@ Matrix4 GraphicsLibrary::LookAt(Vector3& eye, Vector3& up, Vector3& target)
 	{
 		cameraRight.x,	   cameraRight.y,	  cameraRight.z,	 0,
 		cameraUp.x,		   cameraUp.y,		  cameraUp.z,		 0,
-		cameraDirection.x, cameraDirection.x, cameraDirection.x, 0,
+		cameraDirection.x, cameraDirection.y, cameraDirection.z, 0,
 		0,				   0,				  0,				 1
 	};
 
@@ -247,7 +258,7 @@ void GraphicsLibrary::DrawTriangle(Point4 triangle[], double attributes[])
 					countEdge = 0;
 					edgeEnd = it;
 					// 绘制线段
-					for (int x = (int)edgeStar->x; x <= (int)edgeEnd->x; x++)
+					for (int x = edgeStar->x; x <= edgeEnd->x; x++)
 					{
 						double weightA, weightB, weightC;
 						Vector3 ap(x - points[0].x, y - points[0].y, 0.0);
@@ -263,7 +274,7 @@ void GraphicsLibrary::DrawTriangle(Point4 triangle[], double attributes[])
 							points[2].z / points[2].w * weightC);
 
 						// 与z缓冲区进行比较
-						if (z > zBuffer[x + screenWidth * y])
+						if (z > zBuffer[(int)x + screenWidth * y])
 							continue;
 						else
 							zBuffer[x + screenWidth * y] = z;
@@ -396,7 +407,8 @@ void GraphicsLibrary::clipTriangleAndDraw(Point4 triangle[], double attributes[]
 	// 将裁剪后的图形分解成多个三角形进行绘制，记得要先进行透视除法将坐标变换到CVV空间
 	std::unique_ptr<Point4[]> out(new Point4[3]);
 	std::unique_ptr<double[]> outAttributes(new double[attributeStride * 3]);
-	for (size_t i = 1; i < points.size() - 1; i++)
+	int size = points.size();
+	for (int i = 1; i < size - 1; i++)
 	{
 		out[0].x = points[0].x / points[0].w;
 		out[0].y = points[0].y / points[0].w;

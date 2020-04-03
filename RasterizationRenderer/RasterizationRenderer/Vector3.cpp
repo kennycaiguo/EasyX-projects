@@ -27,9 +27,35 @@ Vector3& Vector3::operator=(std::initializer_list<double> list)
 	return *this;
 }
 
-Vector3 Vector3::operator-(Vector3& a)
+Vector3 Vector3::operator+(Vector3 a)
+{
+	return Vector3(x + a.x, y + a.y, z + a.z);
+}
+
+Vector3& Vector3::operator+=(Vector3 a)
+{
+	x += a.x;
+	y += a.y;
+	z += a.z;
+	return *this;
+}
+
+Vector3& Vector3::operator-=(Vector3 a)
+{
+	x -= a.x;
+	y -= a.y;
+	z -= a.z;
+	return *this;
+}
+
+Vector3 Vector3::operator-(Vector3 a)
 {
 	return Vector3(x - a.x, y - a.y, z - a.z);
+}
+
+Vector3 Vector3::operator*(double a)
+{
+	return Vector3(x * a, y * a, z * a);
 }
 
 double Vector3::operator[](size_t i) const
