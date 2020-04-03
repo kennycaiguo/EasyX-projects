@@ -1,7 +1,6 @@
 #include "GraphicsLibrary.h"
 #include "Camera.h"
 #include "Timer.h"
-#include "conio.h"	
 
 unsigned int width = 640;
 unsigned int height = 480;
@@ -95,7 +94,7 @@ void DrawBox()
 	gl->cullClockwise = true;
 	gl->VertexShader = vs;
 	gl->FragmentShader = fs;
-	gl->LoadPicture("container.png");
+	gl->LoadPicture("awesomeface.png");
 }
 
 void processKeyBoardInput()
