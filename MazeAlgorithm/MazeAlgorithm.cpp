@@ -1,10 +1,5 @@
 #include "MazeAlgorithm.h"
 
-MazeGraph::~MazeGraph()
-{
-	closegraph();
-}
-
 void MazeGraph::Init(int width, int height, int row, int column, bool isWall)
 {
 	setlinecolor(DARKGRAY);
@@ -12,6 +7,7 @@ void MazeGraph::Init(int width, int height, int row, int column, bool isWall)
 	gridLeft = (width - cellLength * column) / 2;
 	gridUp = (height - cellLength * row) / 2;
 
+	// 当isWall为true时，迷宫全为墙；当isWall为false时，迷宫外围为墙，内部为路
 	for (int i = 0; i < row; i++)
 	{
 		for (int j = 0; j < column; j++)
@@ -88,13 +84,15 @@ A_Container::Node* A_Container::GetDestNode() const
 	return destNode;
 }
 
-Maze::Maze(int _row, int _column)
+Maze::Maze(int _width, int _height, int _row, int _column)
 {
+	width = _width;
+	height = _height;
 	initgraph(width, height);
 	setbkmode(TRANSPARENT);
 	setbkcolor(LIGHTGRAY);
 	cleardevice();
-	// 构造迷宫大小及起点终点，迷宫大小必须均为奇数
+	// 构造迷宫大小及起点终点，迷宫大小必须为奇数
 	if ((_row & 1) == 0) ++_row;
 	if ((_column & 1) == 0) ++_column;
 	if (_row <= 5 || _column <= 5) _row = _column = 31;
@@ -105,12 +103,20 @@ Maze::Maze(int _row, int _column)
 	end = glm::vec2(row - 2, column - 1);
 }
 
+Maze::~Maze()
+{
+	closegraph();
+}
+
 void Maze::DFSGenerate(bool isIteration)
 {
 	ClearMaze();
 	for (int i = 0; i < row; i++)
+	{
+		map.push_back(std::vector<CellState>());
 		for (int j = 0; j < column; j++)
-			map[i][j] = CellState::WALL;
+			map[i].push_back(CellState::WALL);
+	}
 
 	mazeGraph.Init(width, height, row, column);
 	int startX = static_cast<int>(start.x);
@@ -119,7 +125,7 @@ void Maze::DFSGenerate(bool isIteration)
 	int endY = static_cast<int>(end.y);
 	mazeGraph.Draw(startX, startY, RGB(255, 0, 0));
 	mazeGraph.Draw(endX, endY, RGB(0, 255, 0));
-	map[startX][startX] = map[endX][endY] = CellState::PATH;
+	map[startX][startY] = map[endX][endY] = CellState::PATH;
 	if (isIteration)
 		DFSIterativeGenerator();
 	else
@@ -130,7 +136,7 @@ void Maze::DFSIterativeGenerator()
 {
 	std::stack<glm::vec2> st;
 	std::vector<glm::vec2> direction = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
-	// 因为迷宫的行列均为奇数，用DFS挖墙起点的索引也要为奇数，否则挖不到起点和终点，可以简单举例尝试
+	// DFS挖墙起点的索引必须为奇数，否则挖不到起点和终点，可以简单举例尝试
 	glm::vec2 node((rand() % (row - 2) + 1) | 1, (rand() % (column - 2) + 1) | 1);
 	st.push(node);
 	while (!st.empty())
@@ -148,20 +154,55 @@ void Maze::DFSIterativeGenerator()
 		int k;
 		for (k = 0; k < 4; k++)
 		{
-			int nextX = static_cast<int>(node.x + 2 * direction[k].x);
-			int nextY = static_cast<int>(node.y + 2 * direction[k].y);
-			if (nextX >= 1 && nextX <= row - 2 && nextY >= 1 && nextY <= column - 2 
-				&& map[nextX][nextY] == CellState::WALL)
+			int nextX = static_cast<int>(node.x + direction[k].x);
+			int next2X = static_cast<int>(node.x + 2 * direction[k].x);
+			int nextY = static_cast<int>(node.y + direction[k].y);
+			int next2Y = static_cast<int>(node.y + 2 * direction[k].y);
+			if (next2X >= 1 && next2X <= row - 2 && next2Y >= 1 && next2Y <= column - 2
+				&& map[next2X][next2Y] == CellState::WALL)
 			{
-
+				mazeGraph.DrawPath(nextX, nextY);
+				map[nextX][nextY] = CellState::PATH;
+				node.x = next2X;
+				node.y = next2Y;
+				st.push(node);
+				Sleep(delayMs);
+				break;
 			}
 		}
+		if (k == 4) 
+			st.pop();
+		if (!st.empty())
+			node = st.top();
 	}
 }
 
 void Maze::DFSGenerator(int x, int y)
 {
+	std::vector<glm::vec2> direction = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+	std::random_shuffle(direction.begin(), direction.end());
 
+	mazeGraph.DrawPath(x, y);
+	map[x][y] = CellState::PATH;
+	Sleep(delayMs);
+
+	for (int i = 0; i < 4; i++)
+	{
+		int nextX = static_cast<int>(x + direction[i].x);
+		int next2X = static_cast<int>(x + 2 * direction[i].x);
+		int nextY = static_cast<int>(y + direction[i].y);
+		int next2Y = static_cast<int>(y + 2 * direction[i].y);
+		if (next2X >= 1 && next2X <= row - 2 && next2Y >= 1 && next2Y <= column - 2
+			&& map[next2X][next2Y] == CellState::WALL)
+		{
+			mazeGraph.DrawPath(nextX, nextY);
+			map[nextX][nextY] = CellState::PATH;
+			x = next2X;
+			y = next2Y;
+			Sleep(delayMs);
+			DFSGenerator(x, y);
+		}
+	}
 }
 
 void Maze::ClearMaze()

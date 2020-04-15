@@ -18,7 +18,7 @@ class MazeGraph
 {
 public:
 	MazeGraph() = default;
-	~MazeGraph();
+	~MazeGraph() = default;
 
 	void Init(int width, int height, int row, int col, bool isWall = true);
 	void DrawWall(int row, int column);
@@ -67,22 +67,22 @@ private:
 class Maze
 {
 public:
-	Maze(int row, int column);
+	Maze(int _width, int _height, int _row, int _column);
+	~Maze();
 
 	void DFSGenerate(bool isIteration = false);
 
 private:
-	void DFSIterativeGenerator();			// 迭代 分割 补墙生成
-	void DFSGenerator(int x, int y);		// 递归 分割 补墙生成 要求参数为奇数
+	void DFSIterativeGenerator();			// DFS迭代版本 挖墙生成
+	void DFSGenerator(int x, int y);		// DFS递归版本 挖墙生成
 	void ClearMaze();
+
 private:
+	int width;								// 窗口宽度
+	int height;								// 窗口高度
 	int delayMs = 40;						// 延时delayMs毫秒
 	int row, column;						// 迷宫长宽方格数
 	glm::vec2 end, start;					// 迷宫起点和终点
 	MazeGraph mazeGraph;					// 迷宫绘图
 	std::vector<std::vector<CellState>> map;// 迷宫二维容器
-
-public:
-	int width = 640;						// 窗口宽度
-	int height = 480;						// 窗口高度
 };

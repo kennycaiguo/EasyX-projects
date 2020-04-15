@@ -1,18 +1,14 @@
 #include <easyx.h>
 #include <iostream>
+#include <ctime>
+#include "MazeAlgorithm.h"
 
 int main()
 {
-	initgraph(640, 480);
-
-	setfillcolor(BLUE);
-	setlinecolor(RED);
-	circle(50, 50, 50);
-	solidrectangle(100, 200, 400, 300);
-	fillrectangle(200, 200, 300, 100);
+	srand((unsigned)time(nullptr));
+	Maze maze(640, 480, 31, 31);
+	maze.DFSGenerate(true);
 
 	std::cin.get();
-	closegraph();
-
 	return 0;
 }
