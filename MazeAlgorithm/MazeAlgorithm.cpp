@@ -41,7 +41,7 @@ void MazeGraph::Draw(int row, int column, COLORREF fillColor, bool isFrame)
 		gridLeft + (column + 1) * cellLength - 1, gridUp + (row + 1) * cellLength - 1);	
 }
 
-A_Container::A_Container(const glm::vec2& destination)
+A_Container::A_Container(const Vector2i destination)
 	: destPosition(destination) {}
 
 A_Container::~A_Container()
@@ -52,7 +52,7 @@ A_Container::~A_Container()
 		delete node;
 }
 
-void A_Container::PushOpenList(const glm::vec2 position)
+void A_Container::PushOpenList(const Vector2i& position)
 {
 	int G = 0;
 	Node* parent = nullptr;
@@ -61,19 +61,19 @@ void A_Container::PushOpenList(const glm::vec2 position)
 		parent = closeList.back();
 		G = parent->G + 1;
 	}
-	int x = static_cast<int>(position.x);
-	int y = static_cast<int>(position.y);
-	int H = static_cast<int>(abs(position.x - destPosition.x) + abs(position.y - destPosition.y));
+	int x = position.x();
+	int y = position.y();
+	int H = abs(x - destPosition.x()) + abs(y - destPosition.y());
 	Node* temp(new Node(x, y, G, H, parent));
 	if (position == destPosition)
 		destNode = temp;
 	openList.insert(temp);
 }
 
-glm::vec2 A_Container::GetMinNode()
+Vector2i A_Container::GetMinNode()
 {
 	auto it = openList.begin();
-	glm::vec2 minNode((*it)->x, (*it)->y);
+	Vector2i minNode((*it)->x, (*it)->y);
 	closeList.push_back(*it);
 	openList.erase(it);
 	return minNode;
@@ -86,6 +86,7 @@ A_Container::Node* A_Container::GetDestNode() const
 
 Maze::Maze(int _width, int _height, int _row, int _column)
 {
+	srand((unsigned)time(0));
 	width = _width;
 	height = _height;
 	initgraph(width, height);
@@ -99,8 +100,8 @@ Maze::Maze(int _width, int _height, int _row, int _column)
 	if (_row != _column) _row = _column;	// 保证迷宫格子为正方形
 	row = _row;
 	column = _column;
-	start = glm::vec2(1, 0);
-	end = glm::vec2(row - 2, column - 1);
+	start = Vector2i(1, 0);
+	end = Vector2i(row - 2, column - 1);
 }
 
 Maze::~Maze()
@@ -119,34 +120,72 @@ void Maze::DFSGenerate(bool isIteration)
 	}
 
 	mazeGraph.Init(width, height, row, column);
-	int startX = static_cast<int>(start.x);
-	int startY = static_cast<int>(start.y);
-	int endX = static_cast<int>(end.x);
-	int endY = static_cast<int>(end.y);
-	mazeGraph.Draw(startX, startY, RGB(255, 0, 0));
-	mazeGraph.Draw(endX, endY, RGB(0, 255, 0));
-	map[startX][startY] = map[endX][endY] = CellState::PATH;
+	mazeGraph.Draw(start.x(), start.y(), RGB(255, 0, 0));
+	mazeGraph.Draw(end.x(), end.y(), RGB(0, 255, 0));
+	map[start.x()][start.y()] = map[end.x()][end.y()] = CellState::PATH;
 	if (isIteration)
-		DFSIterativeGenerator();
+		DFSGenerator();
 	else
-		DFSGenerator((rand() % (row - 2) + 1) | 1, (rand() % (column - 2) + 1) | 1);
+		DFSGenerator(
+			Vector2i((rand() % (row - 2) + 1) | 1, 
+				(rand() % (column - 2) + 1) | 1)
+		);
 }
 
-void Maze::DFSIterativeGenerator()
+void Maze::DivisionGenerate(bool isIteration)
 {
-	std::stack<glm::vec2> st;
-	std::vector<glm::vec2> direction = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+	ClearMaze();
+	// 迷宫外围一圈是墙，内部均为路
+	for (int i = 0; i < row; i++)
+	{
+		map.push_back(std::vector<CellState>());
+		for (int j = 0; j < column; j++)
+		{
+			if (i == 0 || i == row - 1 || j == 0 || j == column - 1)
+				map[i].push_back(CellState::WALL);
+			else 
+				map[i].push_back(CellState::PATH);
+		}
+	}
+
+	mazeGraph.Init(width, height, row, column, false);
+	mazeGraph.Draw(start.x(), start.y(), RGB(0, 255, 0));
+	mazeGraph.Draw(end.x(), end.y(), RGB(255, 0, 0));
+	map[start.x()][start.y()] = map[end.x()][end.y()] = CellState::PATH;
+	if (isIteration) DivisionGenerator();
+	else DivisionGenerator(Vector2i(1, 1), Vector2i(row - 2, column - 2));
+}
+
+void Maze::PrimGenerate()
+{
+	ClearMaze();
+	for (int i = 0; i < row; i++)
+	{
+		map.push_back(std::vector<CellState>());
+		for (int j = 0; j < column; j++)
+			map[i].push_back(CellState::WALL);
+	}
+
+	mazeGraph.Init(width, height, row, column);
+	mazeGraph.Draw(start.x(), start.y(), RGB(255, 0, 0));
+	mazeGraph.Draw(end.x(), end.y(), RGB(0, 255, 0));
+	map[start.x()][start.y()] = map[end.x()][end.y()] = CellState::PATH;
+	PrimGenerator();
+}
+
+void Maze::DFSGenerator()
+{
+	std::stack<Vector2i> st;
+	std::vector<Vector2i> direction = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
 	// DFS挖墙起点的索引必须为奇数，否则挖不到起点和终点，可以简单举例尝试
-	glm::vec2 node((rand() % (row - 2) + 1) | 1, (rand() % (column - 2) + 1) | 1);
+	Vector2i node((rand() % (row - 2) + 1) | 1, (rand() % (column - 2) + 1) | 1);
 	st.push(node);
 	while (!st.empty())
 	{
-		int i = static_cast<int>(node.x);
-		int j = static_cast<int>(node.y);
-		if (map[i][j] != CellState::PATH)
+		if (map[node.x()][node.y()] != CellState::PATH)
 		{
-			mazeGraph.DrawPath(i, j);
-			map[i][j] = CellState::PATH;
+			mazeGraph.DrawPath(node.x(), node.y());
+			map[node.x()][node.y()] = CellState::PATH;
 			Sleep(delayMs);
 		}
 
@@ -154,17 +193,14 @@ void Maze::DFSIterativeGenerator()
 		int k;
 		for (k = 0; k < 4; k++)
 		{
-			int nextX = static_cast<int>(node.x + direction[k].x);
-			int next2X = static_cast<int>(node.x + 2 * direction[k].x);
-			int nextY = static_cast<int>(node.y + direction[k].y);
-			int next2Y = static_cast<int>(node.y + 2 * direction[k].y);
-			if (next2X >= 1 && next2X <= row - 2 && next2Y >= 1 && next2Y <= column - 2
-				&& map[next2X][next2Y] == CellState::WALL)
+			Vector2i next = node + direction[k];
+			Vector2i next2 = node + 2 * direction[k];
+			if (next2.x() >= 1 && next2.x() <= row - 2 && next2.y() >= 1 && next2.y() <= column - 2
+				&& map[next2.x()][next2.y()] == CellState::WALL)
 			{
-				mazeGraph.DrawPath(nextX, nextY);
-				map[nextX][nextY] = CellState::PATH;
-				node.x = next2X;
-				node.y = next2Y;
+				mazeGraph.DrawPath(next.x(), next.y());
+				map[next.x()][next.y()] = CellState::PATH;
+				node = next2;
 				st.push(node);
 				Sleep(delayMs);
 				break;
@@ -177,32 +213,312 @@ void Maze::DFSIterativeGenerator()
 	}
 }
 
-void Maze::DFSGenerator(int x, int y)
+void Maze::DFSGenerator(Vector2i node)
 {
-	std::vector<glm::vec2> direction = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+	std::vector<Vector2i> direction = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
 	std::random_shuffle(direction.begin(), direction.end());
 
-	mazeGraph.DrawPath(x, y);
-	map[x][y] = CellState::PATH;
+	mazeGraph.DrawPath(node.x(), node.y());
+	map[node.x()][node.y()] = CellState::PATH;
 	Sleep(delayMs);
 
 	for (int i = 0; i < 4; i++)
 	{
-		int nextX = static_cast<int>(x + direction[i].x);
-		int next2X = static_cast<int>(x + 2 * direction[i].x);
-		int nextY = static_cast<int>(y + direction[i].y);
-		int next2Y = static_cast<int>(y + 2 * direction[i].y);
-		if (next2X >= 1 && next2X <= row - 2 && next2Y >= 1 && next2Y <= column - 2
-			&& map[next2X][next2Y] == CellState::WALL)
+		Vector2i next = node + direction[i];
+		Vector2i next2 = node + 2 * direction[i];
+		
+		if (next2.x() >= 1 && next2.x() <= row - 2 && next2.y() >= 1 && next2.y() <= column - 2
+			&& map[next2.x()][next2.y()] == CellState::WALL)
 		{
-			mazeGraph.DrawPath(nextX, nextY);
-			map[nextX][nextY] = CellState::PATH;
-			x = next2X;
-			y = next2Y;
+			mazeGraph.DrawPath(next.x(), next.y());
+			map[next.x()][next.y()] = CellState::PATH;
 			Sleep(delayMs);
-			DFSGenerator(x, y);
+			DFSGenerator(next2);
 		}
 	}
+}
+
+void Maze::DivisionGenerator()
+{
+	std::stack<Vector2i> st;
+	std::vector<int> wallNumber{ 0, 1, 2, 3 }; // 十字墙的编号
+	Vector2i leftTop(1, 1);
+	Vector2i rightBottom(row - 2, column - 2);
+	st.push(leftTop);
+	st.push(rightBottom);
+	while (!st.empty())
+	{
+		if (rightBottom.x() - leftTop.x() > 1 && rightBottom.y() - leftTop.y() > 1)
+		{
+			// 十字墙中心坐标必须为偶数
+			Vector2i center(
+				((rand() % (rightBottom.x() - leftTop.x()) + leftTop.x() + 1) | 1) - 1,
+				((rand() % (rightBottom.y() - leftTop.y()) + leftTop.y() + 1) | 1) - 1
+			);
+			int i = 0;
+			while (center.x() + i <= rightBottom.x() || center.x() - i >= leftTop.x()
+				|| center.y() + i <= rightBottom.y() || center.y() - i >= leftTop.y())
+			{
+				int x, y;
+				if (center.x() + i <= rightBottom.x())
+				{ 
+					x = center.x() + i; y = center.y();
+					mazeGraph.DrawWall(x, y);
+					map[x][y] = CellState::WALL;
+				}
+				if (center.x() - i >= leftTop.x())
+				{
+					x = center.x() - i; y = center.y();
+					mazeGraph.DrawWall(x, y);
+					map[x][y] = CellState::WALL; 
+				}
+				if (center.y() + i <= rightBottom.y())
+				{
+					x = center.x(); y = center.y() + i;
+					mazeGraph.DrawWall(x, y);
+					map[x][y] = CellState::WALL; 
+				}
+				if (center.y() - i >= leftTop.y())
+				{ 
+					x = center.x(); y = center.y() - i;
+					mazeGraph.DrawWall(x, y);
+					map[x][y] = CellState::WALL;
+				}
+				Sleep(delayMs);
+				i++;
+			}
+			// 随机选择三面墙打洞，使得四个矩形连通。打洞的位置必须为奇数，防止与下一次生成的十字墙重叠
+			std::random_shuffle(wallNumber.begin(), wallNumber.end());
+			for (i = 0; i < 3; i++)
+			{
+				int holeRow, holeColumn;
+				switch (wallNumber[i])
+				{
+				case 0:
+					holeRow = (rand() % (center.x() - leftTop.x()) + leftTop.x()) | 1;
+					mazeGraph.DrawPath(holeRow, center.y());
+					map[holeRow][center.y()] = CellState::PATH;
+					break;
+				case 1:
+					holeColumn = (rand() % (center.y() - leftTop.y()) + leftTop.y()) | 1;
+					mazeGraph.DrawPath(center.x(), holeColumn);
+					map[center.x()][holeColumn] = CellState::PATH;
+				case 2:
+					holeRow = (rand() % (rightBottom.x() - center.x()) + center.x()) | 1;
+					mazeGraph.DrawPath(holeRow, center.y());
+					map[holeRow][center.y()] = CellState::PATH;
+					break;
+				case 3:
+					holeColumn = (rand() % (rightBottom.y() - center.y()) + center.y()) | 1;
+					mazeGraph.DrawPath(center.x(), holeColumn);
+					map[center.x()][holeColumn] = CellState::PATH;
+					break;
+				}
+			}
+			Sleep(delayMs);
+			// 除了左上角的方块，其他三个方块压入栈中
+			// 左下角方块
+			st.push(Vector2i(center.x() + 1, leftTop.y()));
+			st.push(Vector2i(rightBottom.x(), center.y() - 1));
+			// 右下角方块
+			st.push(Vector2i(center.x() + 1, center.y() + 1));
+			st.push(Vector2i(rightBottom.x(), rightBottom.y()));
+			// 右上角方块
+			st.push(Vector2i(leftTop.x(), center.y() + 1));
+			st.push(Vector2i(center.x() - 1, rightBottom.y()));
+			
+			rightBottom.x() = center.x() - 1;
+			rightBottom.y() = center.y() - 1;
+		}
+		else if (!st.empty())
+		{
+			rightBottom = st.top();
+			st.pop();
+			leftTop = st.top();
+			st.pop();
+		}
+	}
+}
+
+void Maze::DivisionGenerator(Vector2i leftTop, Vector2i rightBottom)
+{
+	std::vector<int> wallNumber{ 0, 1, 2, 3 };	// 十字墙的编号
+
+	if (rightBottom.x() - leftTop.x() > 1 && rightBottom.y() - leftTop.y() > 1)
+	{
+		// 十字墙中心坐标必须为偶数
+		Vector2i center(
+			((rand() % (rightBottom.x() - leftTop.x()) + leftTop.x() + 1) | 1) - 1,
+			((rand() % (rightBottom.y() - leftTop.y()) + leftTop.y() + 1) | 1) - 1
+		);
+		int i = 0;
+		while (center.x() + i <= rightBottom.x() || center.x() - i >= leftTop.x()
+			|| center.y() + i <= rightBottom.y() || center.y() - i >= leftTop.y())
+		{
+			int x, y;
+			if (center.x() + i <= rightBottom.x())
+			{
+				x = center.x() + i; y = center.y();
+				mazeGraph.DrawWall(x, y);
+				map[x][y] = CellState::WALL;
+			}
+			if (center.x() - i >= leftTop.x())
+			{
+				x = center.x() - i; y = center.y();
+				mazeGraph.DrawWall(x, y);
+				map[x][y] = CellState::WALL;
+			}
+			if (center.y() + i <= rightBottom.y())
+			{
+				x = center.x(); y = center.y() + i;
+				mazeGraph.DrawWall(x, y);
+				map[x][y] = CellState::WALL;
+			}
+			if (center.y() - i >= leftTop.y())
+			{
+				x = center.x(); y = center.y() - i;
+				mazeGraph.DrawWall(x, y);
+				map[x][y] = CellState::WALL;
+			}
+			Sleep(delayMs);
+			i++;
+		}
+		// 随机选择三面墙打洞，使得四个矩形连通。打洞的位置必须为奇数，防止与下一次生成的十字墙重叠
+		std::random_shuffle(wallNumber.begin(), wallNumber.end());
+		for (i = 0; i < 3; i++)
+		{
+			int holeRow, holeColumn;
+			switch (wallNumber[i])
+			{
+			case 0:
+				holeRow = (rand() % (center.x() - leftTop.x()) + leftTop.x()) | 1;
+				mazeGraph.DrawPath(holeRow, center.y());
+				map[holeRow][center.y()] = CellState::PATH;
+				break;
+			case 1:
+				holeColumn = (rand() % (center.y() - leftTop.y()) + leftTop.y()) | 1;
+				mazeGraph.DrawPath(center.x(), holeColumn);
+				map[center.x()][holeColumn] = CellState::PATH;
+			case 2:
+				holeRow = (rand() % (rightBottom.x() - center.x()) + center.x()) | 1;
+				mazeGraph.DrawPath(holeRow, center.y());
+				map[holeRow][center.y()] = CellState::PATH;
+				break;
+			case 3:
+				holeColumn = (rand() % (rightBottom.y() - center.y()) + center.y()) | 1;
+				mazeGraph.DrawPath(center.x(), holeColumn);
+				map[center.x()][holeColumn] = CellState::PATH;
+				break;
+			}
+		}
+		Sleep(delayMs);
+		// 对四个方块分别进行分割
+		DivisionGenerator(Vector2i(leftTop.x(), leftTop.y()), Vector2i(center.x() - 1, center.y() - 1));
+		DivisionGenerator(Vector2i(center.x() + 1, leftTop.y()), Vector2i(rightBottom.x(), center.y() - 1));
+		DivisionGenerator(Vector2i(center.x() + 1, center.y() + 1), Vector2i(rightBottom.x(), rightBottom.y()));
+		DivisionGenerator(Vector2i(leftTop.x(), center.y() + 1), Vector2i(center.x() - 1, rightBottom.y()));
+	}
+}
+
+void Maze::PrimGenerator()
+{
+	// 构建墙栅格，奇数点为通路，
+	for (int i = 1; i <= row - 2; i += 2)
+	{
+		for (int j = 1; j <= column - 2; j += 2)
+		{
+			mazeGraph.DrawPath(i, j);
+			map[i][j] = CellState::PATH;
+		}
+	}
+	Sleep(delayMs);
+	std::vector<Vector2i> wallList;
+	// 选择一个通路作为起点
+	Vector2i root((rand() % (row - 2) + 1) | 1, (rand() % (row - 2) + 1) | 1);
+	// 将该通路周围的墙加入墙列表
+	if (root.x() - 1 >= 2) wallList.push_back(Vector2i(root.x() - 1, root.y()));
+	if (root.x() + 1 <= row - 3) wallList.push_back(Vector2i(root.x() + 1, root.y()));
+	if (root.y() - 1 >= 2) wallList.push_back(Vector2i(root.x(), root.y() - 1));
+	if (root.y() + 1 <= column - 3) wallList.push_back(Vector2i(root.x(), root.y() + 1));
+	// 标记该通路
+	map[root.x()][root.y()] = CellState::VISITED;
+	int index = 0;
+	while (!wallList.empty())
+	{
+		index = rand() % wallList.size();	// 在墙列表中随机选择一面墙
+		Vector2i wall = wallList[index];
+
+		// 墙列表中的墙分为两种，一种是左右是通路，一种上下是通路，所以需要进行判断
+		bool isDig = false;			// 墙是否打通
+		int up = wall.x() - 1;
+		int down = wall.x() + 1;
+		int left = wall.y() - 1;
+		int right = wall.y() + 1;
+		// 如果墙的上方也是墙，说明该墙的左右是通路
+		if (map[up][wall.y()] == CellState::WALL)
+		{
+			// 如果墙的左右有一个没访问过，即一个是VISITED，一个是PATH
+			if (map[wall.x()][left] != map[wall.x()][right])
+			{
+				mazeGraph.DrawPath(wall.x(), wall.y());
+				map[wall.x()][wall.y()] = CellState::PATH;
+				// 把访问过的通路设置为VISITED
+				if (map[wall.x()][left] == CellState::VISITED)
+				{
+					map[wall.x()][right] = CellState::VISITED;
+					++wall.y();
+				}
+				else
+				{
+					map[wall.x()][left] = CellState::VISITED;
+					--wall.y();
+				}
+				isDig = true;
+			}
+		}
+		// 墙的上下是通路
+		else
+		{
+			if (map[up][wall.y()] != map[down][wall.y()])
+			{
+				mazeGraph.DrawPath(wall.x(), wall.y());
+				map[wall.x()][wall.y()] = CellState::PATH;
+				// 把访问过的通路设置为VISITED
+				if (map[up][wall.y()] == CellState::VISITED)
+				{
+					map[down][wall.y()] = CellState::VISITED;
+					++wall.x();
+				}
+				else
+				{
+					map[up][wall.y()] = CellState::VISITED;
+					--wall.x();
+				}
+				isDig = true;
+			}
+		}
+		// 如果打通了墙，则把设置为VISITED的通路周围的墙加入墙列表中
+		if (isDig)
+		{
+			up = wall.x() - 1;
+			down = wall.x() + 1;
+			left = wall.y() - 1;
+			right = wall.y() + 1;
+			if (up >= 2 && map[up][wall.y()] == CellState::WALL)
+				wallList.push_back(Vector2i(up, wall.y()));
+			if (down <= row - 3 && map[down][wall.y()] == CellState::WALL)
+				wallList.push_back(Vector2i(down, wall.y()));
+			if (left >= 2 && map[wall.x()][left] == CellState::WALL) 
+				wallList.push_back(Vector2i(wall.x(), left));
+			if (right <= column - 3 && map[wall.x()][right] == CellState::WALL) 
+				wallList.push_back(Vector2i(wall.x(), right));
+			Sleep(delayMs);
+		}
+		wallList.erase(wallList.begin() + index);
+	}
+	for (auto& v1 : map)
+		for (auto& v2 : v1)
+			if (v2 == CellState::VISITED) v2 = CellState::PATH;
 }
 
 void Maze::ClearMaze()

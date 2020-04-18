@@ -5,11 +5,13 @@
 #include <memory>
 #include <stack>
 #include <algorithm>
+#include <ctime>
 #include <iostream>
 #include <easyx.h>
-#include <glm/glm.hpp>
+#include <Eigen/Dense>
+using namespace Eigen;
 
-enum class CellState : int { PATH = 0, WALL, FLAG };
+enum class CellState : int { PATH = 0, WALL, VISITED };
 
 /*****************************
  迷宫绘制类
@@ -50,15 +52,15 @@ class A_Container
 	};
 
 public:
-	A_Container(const glm::vec2& destination);
+	A_Container(const Vector2i destination);
 	~A_Container();
 
-	void PushOpenList(const glm::vec2 position);
-	glm::vec2 GetMinNode();
+	void PushOpenList(const Vector2i& position);
+	Vector2i GetMinNode();
 	Node* GetDestNode() const;
 	
 private:
-	glm::vec2 destPosition;
+	Vector2i destPosition;
 	Node* destNode = nullptr;
 	std::vector<Node*> closeList;
 	std::multiset<Node*, Compare> openList;
@@ -70,11 +72,16 @@ public:
 	Maze(int _width, int _height, int _row, int _column);
 	~Maze();
 
-	void DFSGenerate(bool isIteration = false);
+	void DFSGenerate(bool isIteration = false);						// DFS生成迷宫
+	void DivisionGenerate(bool isIteration = false);				// 分割生成
+	void PrimGenerate();											// 随机Prim生成迷宫
 
 private:
-	void DFSIterativeGenerator();			// DFS迭代版本 挖墙生成
-	void DFSGenerator(int x, int y);		// DFS递归版本 挖墙生成
+	void DFSGenerator();											// DFS迭代版本 挖墙生成
+	void DFSGenerator(Vector2i node);								// DFS递归版本 挖墙生成
+	void DivisionGenerator();										// 分割生成迭代版本 补墙生成
+	void DivisionGenerator(Vector2i leftTop, Vector2i rightBottom);	// 分割生成递归版本 补墙生成
+	void PrimGenerator();											// 随机Prim生成
 	void ClearMaze();
 
 private:
@@ -82,7 +89,7 @@ private:
 	int height;								// 窗口高度
 	int delayMs = 40;						// 延时delayMs毫秒
 	int row, column;						// 迷宫长宽方格数
-	glm::vec2 end, start;					// 迷宫起点和终点
+	Vector2i end, start;					// 迷宫起点和终点
 	MazeGraph mazeGraph;					// 迷宫绘图
 	std::vector<std::vector<CellState>> map;// 迷宫二维容器
 };
