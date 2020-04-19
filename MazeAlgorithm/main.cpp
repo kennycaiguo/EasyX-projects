@@ -7,7 +7,8 @@ int main()
 	/*maze.DivisionGenerate();
 	maze.DivisionGenerate(true);*/
 
-	maze.PrimGenerate();
+	//maze.PrimGenerate();
+	maze.KruskalGenerate();
 
 	std::cin.get();
 	return 0;

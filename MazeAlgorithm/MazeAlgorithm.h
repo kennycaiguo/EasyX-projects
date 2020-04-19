@@ -11,6 +11,8 @@
 #include <Eigen/Dense>
 using namespace Eigen;
 
+#include "DisjointSet.h"
+
 enum class CellState : int { PATH = 0, WALL, VISITED };
 
 /*****************************
@@ -75,13 +77,14 @@ public:
 	void DFSGenerate(bool isIteration = false);						// DFS生成迷宫
 	void DivisionGenerate(bool isIteration = false);				// 分割生成
 	void PrimGenerate();											// 随机Prim生成迷宫
+	void KruskalGenerate();											// 随机Kruskal生成迷宫
 
 private:
 	void DFSGenerator();											// DFS迭代版本 挖墙生成
 	void DFSGenerator(Vector2i node);								// DFS递归版本 挖墙生成
 	void DivisionGenerator();										// 分割生成迭代版本 补墙生成
 	void DivisionGenerator(Vector2i leftTop, Vector2i rightBottom);	// 分割生成递归版本 补墙生成
-	void PrimGenerator();											// 随机Prim生成
+	int DisjointSetIndex(int _row, int _column);					// 返回指定通路在并查集中的索引
 	void ClearMaze();
 
 private:
@@ -92,4 +95,6 @@ private:
 	Vector2i end, start;					// 迷宫起点和终点
 	MazeGraph mazeGraph;					// 迷宫绘图
 	std::vector<std::vector<CellState>> map;// 迷宫二维容器
+	DisjointSet* pathSet = nullptr;			// 通路的并查集
 };
+

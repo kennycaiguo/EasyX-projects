@@ -140,10 +140,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DisjointSet.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MazeAlgorithm.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DisjointSet.h" />
     <ClInclude Include="MazeAlgorithm.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

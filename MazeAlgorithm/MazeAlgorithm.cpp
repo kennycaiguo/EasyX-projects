@@ -170,7 +170,174 @@ void Maze::PrimGenerate()
 	mazeGraph.Draw(start.x(), start.y(), RGB(255, 0, 0));
 	mazeGraph.Draw(end.x(), end.y(), RGB(0, 255, 0));
 	map[start.x()][start.y()] = map[end.x()][end.y()] = CellState::PATH;
-	PrimGenerator();
+	
+	// 构建墙栅格，奇数点为通路，
+	for (int i = 1; i <= row - 2; i += 2)
+	{
+		for (int j = 1; j <= column - 2; j += 2)
+		{
+			mazeGraph.DrawPath(i, j);
+			map[i][j] = CellState::PATH;
+		}
+	}
+	Sleep(delayMs);
+	std::vector<Vector2i> wallList;
+	// 选择一个通路作为起点
+	Vector2i root((rand() % (row - 2) + 1) | 1, (rand() % (row - 2) + 1) | 1);
+	// 将该通路周围的墙加入墙列表
+	if (root.x() - 1 >= 2) wallList.push_back(Vector2i(root.x() - 1, root.y()));
+	if (root.x() + 1 <= row - 3) wallList.push_back(Vector2i(root.x() + 1, root.y()));
+	if (root.y() - 1 >= 2) wallList.push_back(Vector2i(root.x(), root.y() - 1));
+	if (root.y() + 1 <= column - 3) wallList.push_back(Vector2i(root.x(), root.y() + 1));
+	// 标记该通路
+	map[root.x()][root.y()] = CellState::VISITED;
+	int index = 0;
+	while (!wallList.empty())
+	{
+		index = rand() % wallList.size();	// 在墙列表中随机选择一面墙
+		Vector2i wall = wallList[index];
+
+		// 墙列表中的墙分为两种，一种是左右是通路，一种上下是通路，所以需要进行判断
+		bool isDig = false;			// 墙是否打通
+		int up = wall.x() - 1;
+		int down = wall.x() + 1;
+		int left = wall.y() - 1;
+		int right = wall.y() + 1;
+		// 如果墙的上方也是墙，说明该墙的左右是通路
+		if (map[up][wall.y()] == CellState::WALL)
+		{
+			// 如果墙的左右有一个没访问过，即一个是VISITED，一个是PATH
+			if (map[wall.x()][left] != map[wall.x()][right])
+			{
+				mazeGraph.DrawPath(wall.x(), wall.y());
+				map[wall.x()][wall.y()] = CellState::PATH;
+				// 把访问过的通路设置为VISITED
+				if (map[wall.x()][left] == CellState::VISITED)
+				{
+					map[wall.x()][right] = CellState::VISITED;
+					++wall.y();
+				}
+				else
+				{
+					map[wall.x()][left] = CellState::VISITED;
+					--wall.y();
+				}
+				isDig = true;
+			}
+		}
+		// 墙的上下是通路
+		else
+		{
+			if (map[up][wall.y()] != map[down][wall.y()])
+			{
+				mazeGraph.DrawPath(wall.x(), wall.y());
+				map[wall.x()][wall.y()] = CellState::PATH;
+				// 把访问过的通路设置为VISITED
+				if (map[up][wall.y()] == CellState::VISITED)
+				{
+					map[down][wall.y()] = CellState::VISITED;
+					++wall.x();
+				}
+				else
+				{
+					map[up][wall.y()] = CellState::VISITED;
+					--wall.x();
+				}
+				isDig = true;
+			}
+		}
+		// 如果打通了墙，则把设置为VISITED的通路周围的墙加入墙列表中
+		if (isDig)
+		{
+			up = wall.x() - 1;
+			down = wall.x() + 1;
+			left = wall.y() - 1;
+			right = wall.y() + 1;
+			if (up >= 2 && map[up][wall.y()] == CellState::WALL)
+				wallList.push_back(Vector2i(up, wall.y()));
+			if (down <= row - 3 && map[down][wall.y()] == CellState::WALL)
+				wallList.push_back(Vector2i(down, wall.y()));
+			if (left >= 2 && map[wall.x()][left] == CellState::WALL)
+				wallList.push_back(Vector2i(wall.x(), left));
+			if (right <= column - 3 && map[wall.x()][right] == CellState::WALL)
+				wallList.push_back(Vector2i(wall.x(), right));
+			Sleep(delayMs);
+		}
+		wallList.erase(wallList.begin() + index);
+	}
+	for (auto& v1 : map)
+		for (auto& v2 : v1)
+			if (v2 == CellState::VISITED) v2 = CellState::PATH;
+}
+
+void Maze::KruskalGenerate()
+{
+	ClearMaze();
+	for (int i = 0; i < row; i++)
+	{
+		map.push_back(std::vector<CellState>());
+		for (int j = 0; j < column; j++)
+			map[i].push_back(CellState::WALL);
+	}
+
+	mazeGraph.Init(width, height, row, column);
+	mazeGraph.Draw(start.x(), start.y(), RGB(255, 0, 0));
+	mazeGraph.Draw(end.x(), end.y(), RGB(0, 255, 0));
+	map[start.x()][start.y()] = map[end.x()][end.y()] = CellState::PATH;
+	// 构建墙栅格，奇数点为通路，同时构建通路的并查集
+	for (int i = 1; i <= row - 2; i += 2)
+	{
+		for (int j = 1; j <= column - 2; j += 2)
+		{
+			mazeGraph.DrawPath(i, j);
+			map[i][j] = CellState::PATH;
+		}
+	}
+	pathSet = new DisjointSet(row, column);
+	Sleep(delayMs);
+	// 构建墙列表，每一堵墙分割两个通路
+	std::vector<Vector2i> wallList;
+	for (int i = 1; i <= row - 2; i++)
+	{
+		int start, end;
+		// 奇数行和偶数行的墙列表索引不同
+		if (i % 2 == 0){ start = 1; end = column - 2; }
+		else { start = 2; end = column - 3; }
+		for (int j = start; j <= end; j += 2)
+			wallList.push_back(Vector2i(i, j));
+	}
+	// 随机化墙列表
+	std::random_shuffle(wallList.begin(), wallList.end());
+	for (auto& wall : wallList)
+	{
+		// 墙有两种类型，一种是分割上下通路，一种是分割左右通路
+		// 奇数行分割左右通路，偶数行分割上下通路
+		if (wall.x() % 2 == 0)
+		{
+			Vector2i up(wall.x() - 1, wall.y());
+			Vector2i down(wall.x() + 1, wall.y());
+			// 如果两个通路不属于同一集合，即没有连通，则打通墙
+			if (!pathSet->IsSame(up, down))
+			{
+				mazeGraph.DrawPath(wall.x(), wall.y());
+				map[wall.x()][wall.y()] = CellState::PATH;
+				pathSet->Union(up, down);
+				Sleep(delayMs);
+			}
+		}
+		else
+		{
+			Vector2i left(wall.x(), wall.y() - 1);
+			Vector2i right(wall.x(), wall.y() + 1);
+			if (!pathSet->IsSame(left, right))
+			{
+				mazeGraph.DrawPath(wall.x(), wall.y());
+				map[wall.x()][wall.y()] = CellState::PATH;
+				pathSet->Union(left, right);
+				Sleep(delayMs);
+			}
+		}
+	}
 }
 
 void Maze::DFSGenerator()
@@ -420,105 +587,12 @@ void Maze::DivisionGenerator(Vector2i leftTop, Vector2i rightBottom)
 	}
 }
 
-void Maze::PrimGenerator()
+int Maze::DisjointSetIndex(int _row, int _column)
 {
-	// 构建墙栅格，奇数点为通路，
-	for (int i = 1; i <= row - 2; i += 2)
-	{
-		for (int j = 1; j <= column - 2; j += 2)
-		{
-			mazeGraph.DrawPath(i, j);
-			map[i][j] = CellState::PATH;
-		}
-	}
-	Sleep(delayMs);
-	std::vector<Vector2i> wallList;
-	// 选择一个通路作为起点
-	Vector2i root((rand() % (row - 2) + 1) | 1, (rand() % (row - 2) + 1) | 1);
-	// 将该通路周围的墙加入墙列表
-	if (root.x() - 1 >= 2) wallList.push_back(Vector2i(root.x() - 1, root.y()));
-	if (root.x() + 1 <= row - 3) wallList.push_back(Vector2i(root.x() + 1, root.y()));
-	if (root.y() - 1 >= 2) wallList.push_back(Vector2i(root.x(), root.y() - 1));
-	if (root.y() + 1 <= column - 3) wallList.push_back(Vector2i(root.x(), root.y() + 1));
-	// 标记该通路
-	map[root.x()][root.y()] = CellState::VISITED;
-	int index = 0;
-	while (!wallList.empty())
-	{
-		index = rand() % wallList.size();	// 在墙列表中随机选择一面墙
-		Vector2i wall = wallList[index];
-
-		// 墙列表中的墙分为两种，一种是左右是通路，一种上下是通路，所以需要进行判断
-		bool isDig = false;			// 墙是否打通
-		int up = wall.x() - 1;
-		int down = wall.x() + 1;
-		int left = wall.y() - 1;
-		int right = wall.y() + 1;
-		// 如果墙的上方也是墙，说明该墙的左右是通路
-		if (map[up][wall.y()] == CellState::WALL)
-		{
-			// 如果墙的左右有一个没访问过，即一个是VISITED，一个是PATH
-			if (map[wall.x()][left] != map[wall.x()][right])
-			{
-				mazeGraph.DrawPath(wall.x(), wall.y());
-				map[wall.x()][wall.y()] = CellState::PATH;
-				// 把访问过的通路设置为VISITED
-				if (map[wall.x()][left] == CellState::VISITED)
-				{
-					map[wall.x()][right] = CellState::VISITED;
-					++wall.y();
-				}
-				else
-				{
-					map[wall.x()][left] = CellState::VISITED;
-					--wall.y();
-				}
-				isDig = true;
-			}
-		}
-		// 墙的上下是通路
-		else
-		{
-			if (map[up][wall.y()] != map[down][wall.y()])
-			{
-				mazeGraph.DrawPath(wall.x(), wall.y());
-				map[wall.x()][wall.y()] = CellState::PATH;
-				// 把访问过的通路设置为VISITED
-				if (map[up][wall.y()] == CellState::VISITED)
-				{
-					map[down][wall.y()] = CellState::VISITED;
-					++wall.x();
-				}
-				else
-				{
-					map[up][wall.y()] = CellState::VISITED;
-					--wall.x();
-				}
-				isDig = true;
-			}
-		}
-		// 如果打通了墙，则把设置为VISITED的通路周围的墙加入墙列表中
-		if (isDig)
-		{
-			up = wall.x() - 1;
-			down = wall.x() + 1;
-			left = wall.y() - 1;
-			right = wall.y() + 1;
-			if (up >= 2 && map[up][wall.y()] == CellState::WALL)
-				wallList.push_back(Vector2i(up, wall.y()));
-			if (down <= row - 3 && map[down][wall.y()] == CellState::WALL)
-				wallList.push_back(Vector2i(down, wall.y()));
-			if (left >= 2 && map[wall.x()][left] == CellState::WALL) 
-				wallList.push_back(Vector2i(wall.x(), left));
-			if (right <= column - 3 && map[wall.x()][right] == CellState::WALL) 
-				wallList.push_back(Vector2i(wall.x(), right));
-			Sleep(delayMs);
-		}
-		wallList.erase(wallList.begin() + index);
-	}
-	for (auto& v1 : map)
-		for (auto& v2 : v1)
-			if (v2 == CellState::VISITED) v2 = CellState::PATH;
+	int numberOfRow = (column - 2) / 2 + 1;
+	int pathRow = _row / 2;
+	int pathColumn = _column / 2;
+	return pathRow * numberOfRow + pathColumn;
 }
 
 void Maze::ClearMaze()
