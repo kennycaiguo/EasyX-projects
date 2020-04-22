@@ -38,7 +38,7 @@ private:
 /*****************************
  A*寻路容器
 ******************************/
-class A_Container
+class AStarContainer
 {
 	struct Node
 	{
@@ -54,8 +54,8 @@ class A_Container
 	};
 
 public:
-	A_Container(const Vector2i destination);
-	~A_Container();
+	AStarContainer(const Vector2i destination);
+	~AStarContainer();
 
 	void PushOpenList(const Vector2i& position);
 	Vector2i GetMinNode();
@@ -68,6 +68,9 @@ private:
 	std::multiset<Node*, Compare> openList;
 };
 
+/*****************************
+ 迷宫类
+******************************/
 class Maze
 {
 public:
@@ -78,6 +81,9 @@ public:
 	void DivisionGenerate(bool isIteration = false);				// 分割生成
 	void PrimGenerate();											// 随机Prim生成迷宫
 	void KruskalGenerate();											// 随机Kruskal生成迷宫
+
+	void DFSPathFinding(bool isRandom = false);						// 深度优先搜索(DFS)寻路
+	void AStarPathFinding();										// A*寻路
 
 private:
 	void DFSGenerator();											// DFS迭代版本 挖墙生成

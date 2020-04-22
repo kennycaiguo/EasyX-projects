@@ -41,10 +41,10 @@ void MazeGraph::Draw(int row, int column, COLORREF fillColor, bool isFrame)
 		gridLeft + (column + 1) * cellLength - 1, gridUp + (row + 1) * cellLength - 1);	
 }
 
-A_Container::A_Container(const Vector2i destination)
+AStarContainer::AStarContainer(const Vector2i destination)
 	: destPosition(destination) {}
 
-A_Container::~A_Container()
+AStarContainer::~AStarContainer()
 {
 	for (auto node : closeList)
 		delete node;
@@ -52,7 +52,7 @@ A_Container::~A_Container()
 		delete node;
 }
 
-void A_Container::PushOpenList(const Vector2i& position)
+void AStarContainer::PushOpenList(const Vector2i& position)
 {
 	int G = 0;
 	Node* parent = nullptr;
@@ -70,7 +70,7 @@ void A_Container::PushOpenList(const Vector2i& position)
 	openList.insert(temp);
 }
 
-Vector2i A_Container::GetMinNode()
+Vector2i AStarContainer::GetMinNode()
 {
 	auto it = openList.begin();
 	Vector2i minNode((*it)->x, (*it)->y);
@@ -79,7 +79,7 @@ Vector2i A_Container::GetMinNode()
 	return minNode;
 }
 
-A_Container::Node* A_Container::GetDestNode() const
+AStarContainer::Node* AStarContainer::GetDestNode() const
 {
 	return destNode;
 }
@@ -338,6 +338,116 @@ void Maze::KruskalGenerate()
 			}
 		}
 	}
+}
+
+void Maze::DFSPathFinding(bool isRandom)
+{
+	std::vector<Vector2i> direction = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+	std::stack<Vector2i> st;
+	Vector2i node = start;
+	st.push(node);
+	while (!st.empty())
+	{
+		if (isRandom) std::random_shuffle(direction.begin(), direction.end());
+		int i = 0;
+		while (i < 4)
+		{
+			Vector2i next = node + direction[i];
+			if (next.x() >= 0 && next.x() <= column - 1
+				&& next.y() >= 0 && next.y() <= row - 1
+				&& map[next.x()][next.y()] == CellState::PATH)
+			{
+				mazeGraph.Draw(node.x(), node.y(), RGB(255, 255, 0));
+				map[node.x()][node.y()] = CellState::VISITED;
+				st.push(next);
+				mazeGraph.Draw(next.x(), next.y(), RGB(255, 0, 0));
+				if (next == end) return;
+				node = next;
+				Sleep(delayMs);
+				break;
+			}
+			++i;
+		}
+		// 无路可走时，往回走
+		if (i == 4)
+		{
+			mazeGraph.DrawPath(node.x(), node.y());
+			map[node.x()][node.y()] = CellState::VISITED;
+			st.pop();
+			if (!st.empty())
+			{
+				node = st.top();
+				mazeGraph.Draw(node.x(), node.y(), RGB(255, 0, 0));
+				Sleep(delayMs);
+			}
+		}
+	}
+
+	for (auto& v1 : map)
+		for (auto& v2 : v1)
+			if (v2 == CellState::VISITED) v2 = CellState::PATH;
+}
+
+void Maze::AStarPathFinding()
+{
+	Vector2i node = end;
+	AStarContainer container(start);
+	container.PushOpenList(node);
+	while (true)
+	{
+		mazeGraph.Draw(node.x(), node.y(), RGB(0, 255, 255));
+		// 将 openList 中 F 值最小的节点放到 closeList 中
+		node = container.GetMinNode();
+		map[node.x()][node.y()] = CellState::VISITED;
+		mazeGraph.Draw(node.x(), node.y(), RGB(0, 0, 255));
+		// 将node周围通路加入openList
+		int up = node.x() - 1;
+		int down = node.x() + 1;
+		int left = node.y() - 1;
+		int right = node.y() + 1;
+		if (up >= 0 && map[up][node.y()] == CellState::PATH)
+		{
+			map[up][node.y()] = CellState::VISITED;
+			container.PushOpenList(Vector2i(up, node.y()));
+			mazeGraph.Draw(up, node.y(), RGB(0, 255, 255));
+			if (start == Vector2i(up, node.y())) break;
+		}
+		if (left >= 0 && map[node.x()][left] == CellState::PATH)
+		{
+			map[node.x()][left] = CellState::VISITED;
+			container.PushOpenList(Vector2i(node.x(), left));
+			mazeGraph.Draw(node.x(), left, RGB(0, 255, 255));
+			if (start == Vector2i(node.x(), left)) break;
+		}
+		if (down <= row - 1 && map[down][node.y()] == CellState::PATH)
+		{
+			map[down][node.y()] = CellState::VISITED;
+			container.PushOpenList(Vector2i(down, node.y()));
+			mazeGraph.Draw(down, node.y(), RGB(0, 255, 255));
+			if (start == Vector2i(down, node.y())) break;
+		}
+		if (right <= column - 1 && map[node.x()][right] == CellState::PATH)
+		{
+			map[node.x()][right] = CellState::VISITED;
+			container.PushOpenList(Vector2i(node.x(), right));
+			mazeGraph.Draw(node.x(), right, RGB(0, 255, 255));
+			if (start == Vector2i(node.x(), right)) break;
+		}
+		Sleep(delayMs);
+	}
+
+	auto path = container.GetDestNode();
+	while (path->parent != nullptr)
+	{
+		mazeGraph.Draw(path->x, path->y, RGB(255, 255, 0));
+		path = path->parent;
+		mazeGraph.Draw(path->x, path->y, RGB(255, 0, 0));
+		Sleep(delayMs);
+	}
+
+	for (auto& v1 : map)
+		for (auto& v2 : v1)
+			if (v2 == CellState::VISITED) v2 = CellState::PATH;
 }
 
 void Maze::DFSGenerator()
